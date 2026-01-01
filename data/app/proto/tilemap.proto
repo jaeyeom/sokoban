@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package sokoban;
+
+service Service {
+  rpc SendAction(TilemapAction) return TilemapState;
+}
+
+message TilemapAction {
+  // Game ID is a unique game ID in string. It is from the URL path.
+  string game_id = 1;
+  // Action is a string like "up", "down", "left", "right", "undo". If action is
+  // empty, no action is taken.
+  string action = 2;
+  // If true, the server will send the whole tilemap information.
+  bool request_all_tiles = 3;
+}
+
+message GameState {
+  // The current level of the game.
+  int32 current = 1;
+  // The grid of
+  repeated string grid = 2;
+}
+
+// B0E8-0341

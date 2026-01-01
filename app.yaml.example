@@ -1,0 +1,6 @@
+runtime: go122
+
+main: ./cmd/webserver
+
+env_variables:
+  BUCKET: "your-bucket-name.appspot.com"

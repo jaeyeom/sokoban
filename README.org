@@ -1,0 +1,115 @@
+#+TITLE: Sokoban
+
+* Overview
+
+A web-based Sokoban game built as a personal challenge in June 2024.
+
+Sokoban is a classic puzzle game where the player pushes boxes onto target
+locations. The player can only push boxes (not pull), and can only push one box
+at a time.
+
+* The Challenge
+
+This game was developed under the following constraints (only initial commit):
+
+1. *No graphical user interfaces* - Development done entirely in a text
+   terminal. Graphical resources could be searched on the browser, but image
+   editing was done in terminal only.
+
+2. *Android phone only* - All development was done on an Android phone using
+   Termux.
+
+3. *Separate cloud backend* - The server is intentionally hosted in Europe (far
+   from the development location) and communicates via an API.
+
+4. *Persistent game state* - Game progress is stored in Google Cloud Storage.
+
+5. *One day implementation* - The entire project was implemented in a single
+   day.
+
+GitHub Copilot was used during development, but no other agentic coding tools
+were used.
+
+* Features
+
+- Classic Sokoban gameplay with multiple levels
+- Keyboard controls (arrow keys, wasd, or Vim-style hjkl)
+- Touch input support (tap on screen quadrants to move)
+- Undo functionality
+- Level reset
+- Cloud-based game state persistence
+
+* Controls
+
+** Keyboard
+
+| Key           | Action     |
+|---------------+------------|
+| Arrow keys    | Move       |
+| w / a / s / d | Move       |
+| h / j / k / l | Move (Vim) |
+| u             | Undo       |
+| r             | Reset      |
+
+** Touch
+
+Touch the screen to move the player:
+- Left side of screen: Move left
+- Right side of screen: Move right
+- Top of screen: Move up
+- Bottom of screen: Move down
+
+* Technology Stack
+
+- *Backend*: Go
+- *Frontend*: Phaser 3 (JavaScript game framework)
+- *Storage*: Google Cloud Storage
+- *Build*: Webpack with Babel
+
+* Project Structure
+
+#+BEGIN_SRC
+sokoban/
+├── cmd/
+│   └── webserver/       # Go web server
+├── data/
+│   ├── app/             # Frontend application
+│   │   ├── src/         # Source files
+│   │   └── dist/        # Bundled output
+│   ├── assets/          # Game assets (tileset)
+│   ├── index.html       # Main HTML page
+│   └── levels.txt       # Level definitions
+├── logic/               # Game logic
+└── storage/             # Storage implementations
+#+END_SRC
+
+* Running the Game
+
+** Locally
+
+1. Google Cloud ADC
+
+   You need gcloud application-default authentication for local development.
+
+   #+begin_src bash
+     gcloud auth application-default login
+   #+end_src
+
+2. Build the frontend:
+   #+BEGIN_SRC bash
+   cd data/app
+   npm install
+   npx webpack --mode development
+   #+END_SRC
+
+3. Run the server:
+   #+BEGIN_SRC bash
+   go run ./cmd/webserver
+   #+END_SRC
+
+4. Open in browser: http://localhost:8080/game/your-game-id
+
+** App Engine Deploy
+
+Copy =app.yaml.example= file to =app.yaml= and put your bucket name, then run
+~make deploy~.
