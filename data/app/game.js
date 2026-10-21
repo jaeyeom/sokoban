@@ -1,3 +1,13 @@
+// Same quadrant rule as src/direction.js.
+function directionFromPoint(x, y, width, height) {
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  if (Math.abs(x - halfWidth) > Math.abs(y - halfHeight)) {
+    return x < halfWidth ? 'left' : 'right';
+  }
+  return y < halfHeight ? 'up' : 'down';
+}
+
 const config = {
   type: Phaser.AUTO,
   width: 608,
@@ -58,19 +68,25 @@ function create() {
     sendAction('reset');
   });
 
-  this.input.on('pointerdown', (pointer, currentlyOver) => {
-    // Skip if pointer is over an interactive object (like buttons)
-    if (currentlyOver.length > 0) {
+  const canvas = this.game.canvas;
+  const handlePointer = (pointer) => {
+    if (pointer.downElement !== canvas) {
       return;
     }
-    // Calculate direction from pointer.x and pointer.y
-    const halfWidth = this.cameras.main.width / 2;
-    const halfHeight = this.cameras.main.height / 2;
-    const direction = Math.abs(pointer.x - halfWidth) > Math.abs(pointer.y - halfHeight) ?
-      (pointer.x < halfWidth ? 'left' : 'right') :
-      (pointer.y < halfHeight ? 'up' : 'down');
-    sendAction(direction);
-  });
+    if (undoButton.getBounds().contains(pointer.x, pointer.y) ||
+        resetButton.getBounds().contains(pointer.x, pointer.y)) {
+      return;
+    }
+    const action = directionFromPoint(
+      pointer.x,
+      pointer.y,
+      this.cameras.main.width,
+      this.cameras.main.height
+    );
+    sendAction(action);
+  };
+  this.input.on('pointerdown', handlePointer);
+  this.input.on('pointerdownoutside', handlePointer);
   this.input.keyboard.on('keydown', handleKeyPress);
 
   handleKeyPress({ key: '.' });
