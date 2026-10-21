@@ -27,7 +27,7 @@ func NewBoardsFromString(strBoards string) []*Board {
 // GameState represents the state of a game.
 type GameState struct {
 	Current int      `json:"current"`
-	Boards  []*Board `json:"boards",omitempty`
+	Boards  []*Board `json:"boards,omitempty"`
 }
 
 // InMemoryStorage represents an in-memory storage.
@@ -93,35 +93,24 @@ func (g *Game) PrevBoard() {
 	g.current = (g.current - 1 + len(g.boards)) % len(g.boards)
 }
 
-func (g *Game) handlePlayerMove() {
-	if g.CurrentBoard().IsSolved() {
-		g.NextBoard()
-		g.CurrentBoard().Reset()
-	}
-}
-
 // Left moves the player to the left.
 func (g *Game) Left() {
 	g.CurrentBoard().MovePlayer(West)
-	g.handlePlayerMove()
 }
 
 // Right moves the player to the right.
 func (g *Game) Right() {
 	g.CurrentBoard().MovePlayer(East)
-	g.handlePlayerMove()
 }
 
 // Up moves the player up.
 func (g *Game) Up() {
 	g.CurrentBoard().MovePlayer(North)
-	g.handlePlayerMove()
 }
 
 // Down moves the player down.
 func (g *Game) Down() {
 	g.CurrentBoard().MovePlayer(South)
-	g.handlePlayerMove()
 }
 
 // Undo undoes the last player move.
@@ -143,6 +132,9 @@ func (g *Game) Save() error {
 }
 
 var ErrInvalidGameState = errors.New("invalid game state")
+
+// ErrNotFound is returned when a game has no saved object.
+var ErrNotFound = errors.New("game not found")
 
 // Load loads the game.
 func (g *Game) Load() error {

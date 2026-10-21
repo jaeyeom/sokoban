@@ -7,7 +7,7 @@ test: test-js
 	go test ./...
 
 test-js:
-	node --test data/app/src/direction.test.js data/app/src/touch.test.js
+	node --test data/app/src/direction.test.js data/app/src/actionQueue.test.js data/app/src/touch.test.js
 
 check-gofmt:
 	@test -z "$$(gofmt -l $$(git ls-files '*.go'))"

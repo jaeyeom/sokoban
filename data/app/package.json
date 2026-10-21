@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "game.js",
   "scripts": {
-    "test": "node --test src/direction.test.js src/touch.test.js"
+    "test": "node --test src/direction.test.js src/actionQueue.test.js src/touch.test.js"
   },
   "keywords": [],
   "author": "",

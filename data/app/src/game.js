@@ -1,11 +1,13 @@
 import Phaser from 'phaser';
 import { fetch } from 'whatwg-fetch'; // Use whatwg-fetch
 import direction from './direction';
+import actionQueue from './actionQueue';
 
 class Game {
   constructor(config) {
     this.config = config;
     this.game = new Phaser.Game(config);
+    this.enqueue = actionQueue.createActionQueue();
   }
 
   preload(scene) {
@@ -24,9 +26,13 @@ class Game {
     this.layer = this.tileMap.createBlankLayer('layer1', tileset, 0, 0);
     this.levelText = scene.add.text(0, 0);
     let undoButton = scene.add.text(150, 0, '[Undo]').setInteractive();
+    let nextButton = scene.add.text(270, 0, '[Next]').setInteractive();
     let resetButton = scene.add.text(400, 0, '[Reset]').setInteractive();
     undoButton.on('pointerdown', () => {
       this.sendAction('undo');
+    });
+    nextButton.on('pointerdown', () => {
+      this.sendAction('next');
     });
     resetButton.on('pointerdown', () => {
       this.sendAction('reset');
@@ -38,6 +44,7 @@ class Game {
         return;
       }
       if (undoButton.getBounds().contains(pointer.x, pointer.y) ||
+          nextButton.getBounds().contains(pointer.x, pointer.y) ||
           resetButton.getBounds().contains(pointer.x, pointer.y)) {
         return;
       }
@@ -95,6 +102,7 @@ class Game {
       'h': 'left',
       'l': 'right',
       'u': 'undo',
+      'n': 'next',
       'r': 'reset',
       '.': '.'
     };
@@ -106,7 +114,11 @@ class Game {
   }
 
   sendAction(action) {
-    fetch(window.location.href, {
+    this.enqueue(() => this.postAction(action));
+  }
+
+  postAction(action) {
+    return fetch(window.location.href, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
