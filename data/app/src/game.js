@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { fetch } from 'whatwg-fetch'; // Use whatwg-fetch
+import direction from './direction';
 
 class Game {
   constructor(config) {
@@ -31,18 +32,25 @@ class Game {
       this.sendAction('reset');
     });
 
-    scene.input.on('pointerdown', (pointer, currentlyOver) => {
-      // Skip if pointer is over an interactive object (like buttons)
-      if (currentlyOver.length > 0) {
+    const handlePointer = (pointer) => {
+      // Letterboxing can emit pointerdownoutside while the target is still the canvas.
+      if (pointer.downElement !== scene.game.canvas) {
         return;
       }
-      const halfWidth = scene.cameras.main.width / 2;
-      const halfHeight = scene.cameras.main.height / 2;
-      const direction = Math.abs(pointer.x - halfWidth) > Math.abs(pointer.y - halfHeight) ?
-        (pointer.x < halfWidth ? 'left' : 'right') :
-        (pointer.y < halfHeight ? 'up' : 'down');
-      this.sendAction(direction);
-    });
+      if (undoButton.getBounds().contains(pointer.x, pointer.y) ||
+          resetButton.getBounds().contains(pointer.x, pointer.y)) {
+        return;
+      }
+      const action = direction.directionFromPoint(
+        pointer.x,
+        pointer.y,
+        scene.cameras.main.width,
+        scene.cameras.main.height
+      );
+      this.sendAction(action);
+    };
+    scene.input.on('pointerdown', handlePointer);
+    scene.input.on('pointerdownoutside', handlePointer);
 
     scene.input.keyboard.on('keydown', (event) => this.handleKeyPress(event));
 
