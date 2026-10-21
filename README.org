@@ -112,5 +112,21 @@ sokoban/
 
 ** App Engine Deploy
 
-Copy =app.yaml.example= file to =app.yaml= and put your bucket name, then run
-~make deploy~.
+A push to =main= deploys after CI passes. The Deploy workflow writes =app.yaml=
+from =app.yaml.example=, rebuilds the frontend, and runs ~make deploy~.
+
+Add these GitHub Actions secrets before merging, or the first deploy fails:
+
+- =GCP_PROJECT_ID=
+- =GCP_WORKLOAD_IDENTITY_PROVIDER=
+- =GCP_SERVICE_ACCOUNT=
+- =GCP_BUCKET=, the value that replaces =your-bucket-name.appspot.com=
+
+The deploy service account needs App Engine Admin, Storage Admin, Cloud Build
+Editor, Artifact Registry Reader, and Service Account User on the App Engine
+runtime account. Use Workload Identity Federation so GitHub has no long-lived
+key:
+https://github.com/google-github-actions/auth
+
+To deploy from a machine, copy =app.yaml.example= to =app.yaml=, set the bucket
+name, install the frontend dependencies, and run ~make deploy~.
