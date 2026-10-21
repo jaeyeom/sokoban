@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: data/app/.nvmrc
+          cache: npm
+          cache-dependency-path: data/app/package-lock.json
+
+      - run: npm ci
+        working-directory: data/app
+
+      - run: npx playwright install --with-deps chromium
+        working-directory: data/app
+
+      - run: make check
+
+      - run: make build
