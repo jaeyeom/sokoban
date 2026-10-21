@@ -74,5 +74,6 @@ clean: clean-coverage
 clean-coverage:
 	rm -f coverage.out coverage.html
 
-deploy:
-	gcloud app deploy
+# Rebuild the bundle App Engine serves, then deploy without prompting.
+deploy: build-web
+	gcloud app deploy --quiet
