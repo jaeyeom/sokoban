@@ -60,9 +60,13 @@ function create() {
   layer = tileMap.createBlankLayer('layer1', tileset, 0, 0);
   levelText = this.add.text(0, 0);
   let undoButton = this.add.text(150, 0, '[Undo]').setInteractive();
+  let nextButton = this.add.text(270, 0, '[Next]').setInteractive();
   let resetButton = this.add.text(400, 0, '[Reset]').setInteractive();
   undoButton.on('pointerdown', () => {
     sendAction('undo');
+  });
+  nextButton.on('pointerdown', () => {
+    sendAction('next');
   });
   resetButton.on('pointerdown', () => {
     sendAction('reset');
@@ -74,6 +78,7 @@ function create() {
       return;
     }
     if (undoButton.getBounds().contains(pointer.x, pointer.y) ||
+        nextButton.getBounds().contains(pointer.x, pointer.y) ||
         resetButton.getBounds().contains(pointer.x, pointer.y)) {
       return;
     }
@@ -130,6 +135,7 @@ function handleKeyPress(event) {
 	  'h': 'left',
     'l': 'right',
     'u': 'undo',
+    'n': 'next',
     'r': 'reset',
     '.': '.'
   };
@@ -140,8 +146,10 @@ function handleKeyPress(event) {
   }
 }
 
+let actionQueue = Promise.resolve();
+
 function sendAction(action) {
-  fetch(window.location.href, {
+  const run = () => fetch(window.location.href, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -156,4 +164,6 @@ function sendAction(action) {
       }
     })
     .catch(error => console.error('Error:', error));
+  const result = actionQueue.then(run, run);
+  actionQueue = result.then(() => {}, () => {});
 }

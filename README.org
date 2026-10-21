@@ -49,6 +49,7 @@ were used.
 | w / a / s / d | Move       |
 | h / j / k / l | Move (Vim) |
 | u             | Undo       |
+| n             | Next level |
 | r             | Reset      |
 
 ** Touch

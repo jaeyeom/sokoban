@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"time"
@@ -49,6 +50,9 @@ func (s *Storage) Load() (logic.GameState, error) {
 	ctx := context.Background()
 	r, err := s.rwf.NewReader(ctx)
 	if err != nil {
+		if errors.Is(err, storage.ErrObjectNotExist) {
+			return logic.GameState{}, logic.ErrNotFound
+		}
 		return logic.GameState{}, err
 	}
 	defer r.Close()
@@ -90,15 +94,22 @@ type DelayedStorage struct {
 	storage    logic.Storage
 	cache      logic.Storage
 	dirty      bool
+	hasCache   bool
+	loadErr    error
 	updateChan chan UpdateRequest
 }
 
 // UpdateRequest represents an update request.
 type UpdateRequest struct {
-	Save  *logic.GameState
-	Load  *logic.GameState
-	Flush bool
-	Done  chan struct{}
+	Save   *logic.GameState
+	Load   *logic.GameState
+	Flush  bool
+	Done   chan struct{}
+	result *updateResult
+}
+
+type updateResult struct {
+	err error
 }
 
 // NewUpdateChan creates a new update channel that sends a flush request
@@ -113,19 +124,25 @@ func NewUpdateChan(duration time.Duration) chan UpdateRequest {
 	return c
 }
 
-// NewDelayedStorage creates a new delayed storage. It saves the game state to
-// the storage when it is flushed. Use NewUpdateChan to create an update channel
-// that flushes the storage periodically.
+// NewDelayedStorage creates a storage that snapshots on Save and flushes that
+// snapshot before Save returns. updateChan still flushes a snapshot that has
+// not reached storage yet. Use NewUpdateChan to create one.
 func NewDelayedStorage(ctx context.Context, storage logic.Storage, updateChan chan UpdateRequest) *DelayedStorage {
 	cache := &logic.InMemoryStorage{}
-	gs, err := storage.Load()
-	if err == nil {
-		cache.Save(gs)
-	}
 	ds := &DelayedStorage{
 		storage:    storage,
 		cache:      cache,
 		updateChan: updateChan,
+	}
+	gs, err := storage.Load()
+	if err == nil {
+		if saveErr := cache.Save(gs); saveErr != nil {
+			ds.loadErr = saveErr
+		} else {
+			ds.hasCache = true
+		}
+	} else if !errors.Is(err, logic.ErrNotFound) {
+		ds.loadErr = err
 	}
 	go ds.run(ctx)
 	return ds
@@ -137,22 +154,18 @@ func (ds *DelayedStorage) run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case req := <-ds.updateChan:
+			var err error
 			if req.Save != nil {
-				ds.dirty = true
-				ds.cache.Save(*req.Save)
+				err = ds.saveSnapshot(*req.Save)
 			}
-			if req.Load != nil {
-				gs, err := ds.cache.Load()
-				if err == nil {
-					*req.Load = gs
-				}
+			if err == nil && req.Load != nil {
+				err = ds.loadInto(req.Load)
 			}
-			if req.Flush {
-				if ds.dirty {
-					gs, _ := ds.cache.Load()
-					ds.storage.Save(gs)
-					ds.dirty = false
-				}
+			if err == nil && req.Flush {
+				err = ds.flush()
+			}
+			if req.result != nil {
+				req.result.err = err
 			}
 			if req.Done != nil {
 				close(req.Done)
@@ -161,17 +174,64 @@ func (ds *DelayedStorage) run(ctx context.Context) {
 	}
 }
 
+func (ds *DelayedStorage) saveSnapshot(gs logic.GameState) error {
+	if ds.loadErr != nil {
+		return ds.loadErr
+	}
+	if err := ds.cache.Save(gs); err != nil {
+		return err
+	}
+	ds.hasCache = true
+	ds.dirty = true
+	return ds.flush()
+}
+
+func (ds *DelayedStorage) flush() error {
+	if !ds.dirty {
+		return nil
+	}
+	gs, err := ds.cache.Load()
+	if err != nil {
+		return err
+	}
+	if err := ds.storage.Save(gs); err != nil {
+		return err
+	}
+	ds.dirty = false
+	return nil
+}
+
+func (ds *DelayedStorage) loadInto(dst *logic.GameState) error {
+	if ds.loadErr != nil {
+		return ds.loadErr
+	}
+	if !ds.hasCache {
+		return logic.ErrNotFound
+	}
+	gs, err := ds.cache.Load()
+	if err != nil {
+		return err
+	}
+	*dst = gs
+	return nil
+}
+
 func (ds *DelayedStorage) Save(gs logic.GameState) error {
 	done := make(chan struct{})
-	ds.updateChan <- UpdateRequest{Save: &gs, Done: done}
+	result := &updateResult{}
+	ds.updateChan <- UpdateRequest{Save: &gs, Done: done, result: result}
 	<-done
-	return nil
+	return result.err
 }
 
 func (ds *DelayedStorage) Load() (logic.GameState, error) {
 	done := make(chan struct{})
-	req := UpdateRequest{Load: &logic.GameState{}, Done: done}
+	result := &updateResult{}
+	req := UpdateRequest{Load: &logic.GameState{}, Done: done, result: result}
 	ds.updateChan <- req
 	<-done
+	if result.err != nil {
+		return logic.GameState{}, result.err
+	}
 	return *req.Load, nil
 }
