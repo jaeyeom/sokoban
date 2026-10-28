@@ -23,3 +23,7 @@
 *.test
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+coverage.html
+
+# Frontend dependencies. The server serves the webpack bundle.
+node_modules/
